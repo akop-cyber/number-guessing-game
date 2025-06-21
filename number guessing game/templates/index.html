@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiplayer Number Game</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { background: #111; color: #eee; font-family: Arial; text-align: center; padding: 20px; }
+        input, button { padding: 10px; margin: 8px; font-size: 16px; border-radius: 8px; border: none; }
+        button { cursor: pointer; background: #444; color: white; }
+        #scoreboard, #chat-box { margin-top: 20px; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 5px 0; }
+        #chat-messages { max-height: 150px; overflow-y: auto; background: #222; padding: 10px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Multiplayer Number Guessing</h1>
+
+    <input type="text" id="name" placeholder="Your name" />
+    <input type="number" id="guess" placeholder="Your guess" />
+    <button onclick="sendGuess()">Submit</button>
+    <button onclick="restartGame()">🔁 Restart</button>
+
+    <p id="result"></p>
+    <div id="scoreboard"></div>
+
+    <h3>💬 Chat</h3>
+    <div id="chat-messages"></div>
+    <input type="text" id="chat" placeholder="Type message" onkeydown="if(event.key==='Enter')sendChat();" />
+    <button onclick="sendChat()">Send</button>
+
+    <h3>⏱️ Timer: <span id="timer">30</span> seconds</h3>
+
+    <audio id="correctSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_b2a30f3e0b.mp3"></audio>
+    <audio id="wrongSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6ef6745a4a.mp3"></audio>
+
+    <script>
+        const socket = io();
+        let timer = 30;
+        let interval;
+
+        function sendGuess() {
+            const name = document.getElementById("name").value.trim();
+            const guess = document.getElementById("guess").value;
+            if (!name || !guess) return alert("Enter both name and guess!");
+            socket.emit("guess", { name, number: guess });
+        }
+
+        function restartGame() {
+            socket.emit("restart");
+            clearInterval(interval);
+            startTimer();
+        }
+
+        function sendChat() {
+            const name = document.getElementById("name").value.trim();
+            const msg = document.getElementById("chat").value;
+            if (!msg) return;
+            socket.emit("chat", { name, message: msg });
+            document.getElementById("chat").value = "";
+        }
+
+        socket.on("result", data => {
+            document.getElementById("result").innerText = data.message;
+
+            if (data.message.includes("right")) {
+                document.getElementById("correctSound").play();
+                clearInterval(interval);
+            } else {
+                document.getElementById("wrongSound").play();
+            }
+
+            if (data.scoreboard) {
+                const scores = data.scoreboard;
+                let html = "<h2>🏆 Scoreboard</h2><ul>";
+                for (let player in scores) {
+                    html += `<li>${player}: ${scores[player]} guess(es)</li>`;
+                }
+                html += "</ul>";
+                document.getElementById("scoreboard").innerHTML = html;
+            }
+        });
+
+        socket.on("chat", data => {
+            const box = document.getElementById("chat-messages");
+            box.innerHTML += `<div><strong>${data.name}:</strong> ${data.message}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        function startTimer() {
+            timer = 30;
+            document.getElementById("timer").innerText = timer;
+            interval = setInterval(() => {
+                timer--;
+                document.getElementById("timer").innerText = timer;
+                if (timer === 0) {
+                    clearInterval(interval);
+                    document.getElementById("result").innerText = "⏳ Time's up!";
+                }
+            }, 1000);
+        }
+
+        startTimer();
+    </script>
+</body>
+</html>
