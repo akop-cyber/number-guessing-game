@@ -1,5 +1,8 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
+import eventlet
+eventlet.monkey_patch()
+
 import random
 
 app = Flask(__name__)
@@ -8,8 +11,6 @@ socketio = SocketIO(app)
 number_to_guess = random.randint(1, 100)
 guesses = {}
 game_over = False
-
-print(f"[DEBUG] Number to guess: {number_to_guess}")
 
 @app.route('/')
 def index():
@@ -45,7 +46,6 @@ def handle_restart():
     number_to_guess = random.randint(1, 100)
     guesses = {}
     game_over = False
-    print(f"[DEBUG] Game restarted. New number: {number_to_guess}")
     emit('result', {'message': '🔄 Game restarted! Start guessing again.', 'scoreboard': {}}, broadcast=True)
 
 @socketio.on('chat')
@@ -54,4 +54,5 @@ def handle_chat(data):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)
+
 
